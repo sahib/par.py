@@ -5,4 +5,4 @@ It's debatable if it's useful for others
 
 **Screenshot:**
 
-.. image:: http://github.com/sahib/par.py/raw/screenshot.png
+.. image:: https://raw.github.com/sahib/par.py/master/screenshot.png
