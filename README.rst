@@ -6,7 +6,7 @@ One can debate if it's useful for others. But here's the code anywhere.
 
 **Screenshot:**
 
-.. image:: http://github.com/sahib/par.py/raw/screenshot.png
+.. image:: https://raw.github.com/sahib/par.py/master/screenshot.png
 
 **Full Screenshot (in bspwm):**
 
