@@ -8,7 +8,7 @@ BAR_TEMPLATE = '''
         widgets=[
             Text(markup='<big> ⌽</big>', color=(0.1, 0.1, 0.1)),
             Separator(align=0.7, alpha=0.2),
-            Desktops(desktops={desktop_names}, selected={desktop_active_num}, urgents={desktop_urgent}),
+            Desktops(desktops={desktop_names}, selected={desktop_active_num}, urgents={desktop_urgent}, empties={desktop_empty}),
             Separator(align=0.5, alpha=0.2)
         ],
         color=parse_color('#a1cd4c'),
@@ -128,7 +128,7 @@ class MPDSource():
             )
             self._last_elapsed = float(info['elapsed'])
             self._last_tottime = float(info['Time'])
-            percent =  self._last_elapsed / self._last_tottime
+            percent = self._last_elapsed / self._last_tottime
             self._last_time = time()
         else:
             markup = '<i> (( not playing )) </i>'
@@ -193,7 +193,7 @@ class BspwmPanelFIFO:
         monitor, *desks, _ = line.split(':')
 
         # Result Storage
-        active, urgent, names = 0, [], []
+        active, urgent, names, empties = 0, [], [], []
         for idx, desk in enumerate(desks):
             # Split [a-Z][0-9] in half
             state, *name = desk
@@ -204,11 +204,15 @@ class BspwmPanelFIFO:
             if state.lower() == 'u':
                 # An urgent desktop
                 urgent.append(idx)
+            if state.lower() == 'e':
+                # An empty desktop
+                empties.append(idx)
 
         return {
             'desktop_names': names,
             'desktop_active_num': active,
-            'desktop_urgent': urgent
+            'desktop_urgent': urgent,
+            'desktop_empty': empties
         }
 
     def read(self, has_input):
@@ -247,6 +251,7 @@ if __name__ == '__main__':
             'desktop_names': repr('???'),
             'desktop_active_num': 0,
             'desktop_urgent': [],
+            'desktop_empty': [],
             'music_markup': repr('<i> (( undefined )) </i>'),
             'music_percent': 0,
             'music_unstopped': False,
