@@ -44,7 +44,8 @@ BAR_TEMPLATE = '''
 from gi.repository import GLib
 from telnetlib import Telnet
 from select import select
-from time import strftime, time
+from time import strftime, time, sleep
+import socket
 
 
 ###########################################################################
@@ -88,7 +89,11 @@ class MPDSource():
         self._is_playing = False
 
     def _wait(self):
-        self._conn.write(b'idle\n')
+        try:
+            self._conn.write(b'idle\n')
+        except IOError:
+            self.disconnect()
+            pass
 
     def _make_dict(self, blob):
         result = {}
@@ -99,13 +104,18 @@ class MPDSource():
         return result
 
     def _read_response(self):
-        return self._conn.read_until(b'OK\n')
+        try:
+            return self._conn.read_until(b'OK\n')
+        except EOFError:
+            self.disconnect()
+            return b''
 
     def connect(self):
         try:
             self._conn = Telnet(host=self._host, port=self._port)
         except socket.error as err:
-            print(err)
+            # print(err)  # We do not want to print it...
+            pass
         else:
             # Read the OK MPD 0.17.0 line
             self._conn.read_until(b'\n')
@@ -113,18 +123,21 @@ class MPDSource():
             # Put ourself to event-looping mode
             self._wait()
 
+    def is_connected(self):
+        return not self.fileno() is -1
+
     def disconnect(self):
         if self._conn:
             self._conn.close()
-            self._conn = None
+        self._conn = None
 
     def _process_info(self, info):
         self._is_playing = unstopped = info['state'] in ['play', 'pause']
         if unstopped:
             markup = '<i> {title}<small> by </small>{artist}<small> on </small>{album} </i>'.format(
-                title=GLib.markup_escape_text(info['Title']),
-                artist=GLib.markup_escape_text(info['Artist']),
-                album=GLib.markup_escape_text(info['Album'])
+                title=GLib.markup_escape_text(info.get('Title', 'n/a')),
+                artist=GLib.markup_escape_text(info.get('Artist', 'n/a')),
+                album=GLib.markup_escape_text(info.get('Album', 'n/a'))
             )
             self._last_elapsed = float(info['elapsed'])
             self._last_tottime = float(info['Time'])
@@ -157,13 +170,15 @@ class MPDSource():
                 blob = self._read_response()
                 raw_info = self._make_dict(blob.decode('utf-8'))
                 info = self._process_info(raw_info)
-            self._wait()
+
+            if self.is_connected():
+                self._wait()
         else:
             info = self._guess_elapsed_from_time()
         return info
 
     def fileno(self):
-        return  self._conn.fileno() if self._conn else - 1
+        return  self._conn.fileno() if self._conn else -1
 
 
 #######################################################
@@ -175,6 +190,7 @@ class BspwmPanelFIFO:
         self._fifo = None
 
     def _read_last(self):
+        #  O1:f2:f3:o4:f5:o6:f7:f8:f9:f0:T*
         last_line = None
         while self._fifo in select([self._fifo], [], [], 0)[0]:
             last_line = self._fifo.readline()
@@ -186,11 +202,11 @@ class BspwmPanelFIFO:
     def disconnect(self):
         if self._fifo:
             self._fifo.close()
-            self._fifo = None
+        self._fifo = None
 
     def _process_line(self, line):
         # Split monitor:d1:d9:tstate in pieces
-        monitor, *desks, _ = line.split(':')
+        monitor, *desks, _, _ = line.split(':')
 
         # Result Storage
         active, urgent, names, empties = 0, [], [], []
@@ -198,13 +214,13 @@ class BspwmPanelFIFO:
             # Split [a-Z][0-9] in half
             state, *name = desk
             names.append(''.join(name))
-            if state in 'DU':
+            if state.isupper():
                 # Active (or Urgent) Desktop
                 active = idx
             if state.lower() == 'u':
                 # An urgent desktop
                 urgent.append(idx)
-            if state.lower() == 'e':
+            if state.lower() == 'f':
                 # An empty desktop
                 empties.append(idx)
 
@@ -223,7 +239,7 @@ class BspwmPanelFIFO:
         return {}
 
     def fileno(self):
-        return self._fifo.fileno()
+        return self._fifo.fileno() if self._fifo else -1
 
 
 ###########################################################################
@@ -231,15 +247,20 @@ class BspwmPanelFIFO:
 ###########################################################################
 
 def poll_on_sources(sources, info, timeout=1.0):
-    for source in sources:
-        readable, _, errord = select(sources, [], sources, timeout)
-        for source in sources:
-            if not source in errord:
-                partial_info = source.read(has_input=(source in readable))
-                info.update(partial_info)
-            else:
-                error_source.disconnect()
-                error_source.connect()
+        try:
+            readable, _, errord = select(sources, [], sources, timeout)
+        except ValueError:  # negative file descriptor
+            for source in sources:
+                if source.fileno() < 0:
+                    source.disconnect()
+                    sleep(1)
+                    source.connect()
+            return
+        else:
+            for source in sources:
+                if not source in errord:
+                    partial_info = source.read(has_input=(source in readable))
+                    info.update(partial_info)
 
         info.update(format_time_box())
         print(format_output_dict(info))

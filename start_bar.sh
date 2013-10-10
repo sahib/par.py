@@ -15,4 +15,5 @@ mkfifo "$BAR_FIFO"
 # Fill initial desktop configuration
 bspc control --put-status
 
-stalonetray --geometry 4x1-1+1 --icon-gravity E --grow-gravity E  -bg "#e08787" -i 18 -d all &
+killall stalonetray
+(sleep 2 && stalonetray --geometry 4x1-1+1 --icon-gravity E --grow-gravity E -bg "#e08787" -i 18 -d all) &
