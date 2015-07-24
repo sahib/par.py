@@ -8,7 +8,7 @@ BAR_TEMPLATE = '''
         widgets=[
             Text(markup='<big> ⌽</big>', color=(0.1, 0.1, 0.1)),
             Separator(align=0.7, alpha=0.2),
-            Desktops(desktops={desktop_names}, selected={desktop_active_num}, urgents={desktop_urgent}, empties={desktop_empty}),
+            Desktops(desktops={desktop_names}, selected={desktop_active}, urgents={desktop_urgent}, empties={desktop_empty}),
             Separator(align=0.5, alpha=0.2)
         ],
         color=parse_color('#a1cd4c'),
@@ -30,7 +30,6 @@ BAR_TEMPLATE = '''
         pos=1.0,
         padding=(2, 75),
         widgets=[
-            Icon(w=16, h=16, path='/home/sahib/.icons/clock.png'),
             Separator(align=0.5, alpha=0.2),
             Text(markup={time_string}, color=(1, 1, 1)),
             Text(markup={date_string}, color=(1, 1, 1))
@@ -45,7 +44,10 @@ from gi.repository import GLib
 from telnetlib import Telnet
 from select import select
 from time import strftime, time, sleep
+
+import sys
 import socket
+import subprocess
 
 
 ###########################################################################
@@ -114,8 +116,7 @@ class MPDSource():
         try:
             self._conn = Telnet(host=self._host, port=self._port)
         except socket.error as err:
-            # print(err)  # We do not want to print it...
-            pass
+            pass # We do not want to print it...
         else:
             # Read the OK MPD 0.17.0 line
             self._conn.read_until(b'\n')
@@ -139,11 +140,16 @@ class MPDSource():
                 artist=GLib.markup_escape_text(info.get('Artist', 'n/a')),
                 album=GLib.markup_escape_text(info.get('Album', 'n/a'))
             )
-            self._last_elapsed = float(info['elapsed'])
-            self._last_tottime = float(info['Time'])
-            percent = self._last_elapsed / self._last_tottime
+            self._last_elapsed = float(info.get('elapsed', 0))
+            self._last_tottime = float(info.get('Time', 0))
+
+            if self._last_tottime:
+                percent = self._last_elapsed / self._last_tottime
+            else:
+                percent = 0
             self._last_time = time()
         else:
+            percent = 0
             markup = '<i> (( not playing )) </i>'
 
         return {
@@ -155,9 +161,12 @@ class MPDSource():
     def _guess_elapsed_from_time(self):
         if self._is_playing:
             diff = time() - self._last_time
-            return {
-                'music_percent': (self._last_elapsed + diff) / self._last_tottime
-            }
+            if self._last_tottime:
+                return {
+                    'music_percent': (self._last_elapsed + diff) / self._last_tottime
+                }
+            else:
+                return {'music_percent': 0}
         else:
             return {}
 
@@ -197,7 +206,11 @@ class BspwmPanelFIFO:
         return last_line
 
     def connect(self):
-        self._fifo = open('/tmp/bspwm.fifo', 'r')
+        self._proc = subprocess.Popen(
+            'bspc control --subscribe',
+            shell=True, stdout=subprocess.PIPE
+        )
+        self._fifo = self._proc.stdout
 
     def disconnect(self):
         if self._fifo:
@@ -206,17 +219,18 @@ class BspwmPanelFIFO:
 
     def _process_line(self, line):
         # Split monitor:d1:d9:tstate in pieces
-        monitor, *desks, _, _ = line.split(':')
+        line = line.decode('utf-8')
+        desks = filter(lambda d: d[0].lower() in 'fou', line.split(':'))
 
         # Result Storage
-        active, urgent, names, empties = 0, [], [], []
+        active, urgent, names, empties = [], [], [], []
         for idx, desk in enumerate(desks):
             # Split [a-Z][0-9] in half
             state, *name = desk
             names.append(''.join(name))
             if state.isupper():
                 # Active (or Urgent) Desktop
-                active = idx
+                active.append(idx)
             if state.lower() == 'u':
                 # An urgent desktop
                 urgent.append(idx)
@@ -226,7 +240,7 @@ class BspwmPanelFIFO:
 
         return {
             'desktop_names': names,
-            'desktop_active_num': active,
+            'desktop_active': active,
             'desktop_urgent': urgent,
             'desktop_empty': empties
         }
@@ -269,11 +283,11 @@ def poll_on_sources(sources, info, timeout=1.0):
 if __name__ == '__main__':
     # All available keys
     info = {
-            'desktop_names': repr('???'),
-            'desktop_active_num': 0,
+            'desktop_names': repr('[?]'),
+            'desktop_active': [],
             'desktop_urgent': [],
             'desktop_empty': [],
-            'music_markup': repr('<i> (( undefined )) </i>'),
+            'music_markup': repr('<i> (( not connected )) </i>'),
             'music_percent': 0,
             'music_unstopped': False,
             'time_string': repr(format_time_string()),
@@ -283,6 +297,7 @@ if __name__ == '__main__':
     print(format_output_dict(info))
 
     sources = [MPDSource(), BspwmPanelFIFO()]
+    # sources = [BspwmPanelFIFO()]
     for source in sources:
         source.connect()
 

@@ -144,13 +144,13 @@ class Text(Widget):
 
 
 class Desktops(Text):
-    def __init__(self, font_descr='Ubuntu Mono', desktops='1234567890', selected=0, urgents=[], empties=[], command='bspc desktop {num} -f'):
+    def __init__(self, font_descr='Ubuntu Mono', desktops='1234567890', selected=[], urgents=[], empties=[], command='bspc desktop {num} -f'):
         self._font_descr = font_descr
         self._command = command
         self._text_widgets = []
         for idx, desktop in enumerate(desktops):
             markup = desktop
-            if idx == selected:
+            if idx in selected:
                 markup = '<big><u>' + markup + '</u></big>'
                 color = (0, 0, 0)
             elif idx in urgents:
@@ -348,6 +348,7 @@ class ElchBar(Gtk.Window):
                 self._on_stdin_input
         )
         self.show_all()
+        self.set_screen(Gdk.Screen.get_default())
 
     def push(self, containers):
         self._containers = containers
@@ -381,6 +382,7 @@ class ElchBar(Gtk.Window):
         try:
             containers = eval(line, {k.__name__: k for k in allowed})
         except Exception as err:
+            print(line)
             print('-> Unable to execute:', err)
         else:
             self.push(containers)
