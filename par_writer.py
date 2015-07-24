@@ -30,7 +30,6 @@ BAR_TEMPLATE = '''
         pos=1.0,
         padding=(2, 75),
         widgets=[
-            Icon(w=16, h=16, path='/home/sahib/.icons/clock.png'),
             Separator(align=0.5, alpha=0.2),
             Text(markup={time_string}, color=(1, 1, 1)),
             Text(markup={date_string}, color=(1, 1, 1))
@@ -45,7 +44,10 @@ from gi.repository import GLib
 from telnetlib import Telnet
 from select import select
 from time import strftime, time, sleep
+
+import sys
 import socket
+import subprocess
 
 
 ###########################################################################
@@ -80,7 +82,7 @@ def format_output_dict(info_dict):
 
 
 class MPDSource():
-    def __init__(self, host='localhost', port=6600):
+    def __init__(self, host='werkstatt', port=6600):
         self._host, self._port = host, port
         self._conn = None
         self._last_elapsed = 0
@@ -114,8 +116,7 @@ class MPDSource():
         try:
             self._conn = Telnet(host=self._host, port=self._port)
         except socket.error as err:
-            # print(err)  # We do not want to print it...
-            pass
+            pass # We do not want to print it...
         else:
             # Read the OK MPD 0.17.0 line
             self._conn.read_until(b'\n')
@@ -144,6 +145,7 @@ class MPDSource():
             percent = self._last_elapsed / self._last_tottime
             self._last_time = time()
         else:
+            percent = 0
             markup = '<i> (( not playing )) </i>'
 
         return {
@@ -197,7 +199,11 @@ class BspwmPanelFIFO:
         return last_line
 
     def connect(self):
-        self._fifo = open('/tmp/panel-fifo', 'r')
+        self._proc = subprocess.Popen(
+            'bspc control --subscribe',
+            shell=True, stdout=subprocess.PIPE
+        )
+        self._fifo = self._proc.stdout
 
     def disconnect(self):
         if self._fifo:
@@ -206,6 +212,7 @@ class BspwmPanelFIFO:
 
     def _process_line(self, line):
         # Split monitor:d1:d9:tstate in pieces
+        line = line.decode('utf-8')
         monitor, *desks, _, _ = line.split(':')
 
         # Result Storage
@@ -269,11 +276,11 @@ def poll_on_sources(sources, info, timeout=1.0):
 if __name__ == '__main__':
     # All available keys
     info = {
-            'desktop_names': repr('???'),
+            'desktop_names': repr('[?]'),
             'desktop_active_num': 0,
             'desktop_urgent': [],
             'desktop_empty': [],
-            'music_markup': repr('<i> (( undefined )) </i>'),
+            'music_markup': repr('<i> (( not connected )) </i>'),
             'music_percent': 0,
             'music_unstopped': False,
             'time_string': repr(format_time_string()),
@@ -283,6 +290,7 @@ if __name__ == '__main__':
     print(format_output_dict(info))
 
     sources = [MPDSource(), BspwmPanelFIFO()]
+    # sources = [BspwmPanelFIFO()]
     for source in sources:
         source.connect()
 

@@ -321,7 +321,7 @@ class ElchBar(Gtk.Window):
         self._containers = []
 
         self._canvas = Gtk.DrawingArea()
-        self._canvas.set_size_request(1920, defaults.get('height', 20))
+        self._canvas.set_size_request(1024, defaults.get('height', 20))
 
         # Enable the receival of the appropiate signals:
         self._canvas.add_events(self.get_events() |
@@ -381,6 +381,7 @@ class ElchBar(Gtk.Window):
         try:
             containers = eval(line, {k.__name__: k for k in allowed})
         except Exception as err:
+            print(line)
             print('-> Unable to execute:', err)
         else:
             self.push(containers)
