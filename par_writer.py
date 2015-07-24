@@ -197,7 +197,7 @@ class BspwmPanelFIFO:
         return last_line
 
     def connect(self):
-        self._fifo = open('/tmp/panel-fifo', 'r')
+        self._fifo = open('/tmp/bspwm.fifo', 'r')
 
     def disconnect(self):
         if self._fifo:
