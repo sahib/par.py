@@ -6,35 +6,35 @@ BAR_TEMPLATE = '''
     ArrowBox(
         pos=0.0,
         widgets=[
-            Text(markup='<big> ⌽</big>', color=(0.1, 0.1, 0.1)),
-            Separator(align=0.7, alpha=0.2),
+            Text(markup=' <span rise="6000"><big><big>⚙</big></big></span>', color=(0.1, 0.1, 0.1)),
+            Separator(align=0.7, alpha=0.15),
             Desktops(desktops={desktop_names}, selected={desktop_active}, urgents={desktop_urgent}, empties={desktop_empty}),
-            Separator(align=0.5, alpha=0.2)
+            Separator(align=0.5, alpha=0.15)
         ],
-        color=parse_color('#a1cd4c'),
+        color=parse_color('#BA8BAF'),
         border_color=(0.1, 0.1, 0.1)
     ),
     ArrowBox(
         pos=0.5,
         widgets=[
             Text(markup='<big> ♬</big>'),
-            Separator(align=0.9, alpha=0.2),
+            Separator(align=0.9, alpha=0.15),
             Text(markup={music_markup}),
             Bar(percent={music_percent}, defined={music_unstopped}),
-            Separator(align=0.5, alpha=0.2),
+            Separator(align=0.5, alpha=0.15),
         ],
-        color=parse_color('#4282be'),
+        color=parse_color('#DC9656'),
         border_color=(0.1, 0.1, 0.1)
     ),
     ArrowBox(
         pos=1.0,
         padding=(2, 75),
         widgets=[
-            Separator(align=0.5, alpha=0.2),
+            Separator(align=0.5, alpha=0.15),
             Text(markup={time_string}, color=(1, 1, 1)),
             Text(markup={date_string}, color=(1, 1, 1))
         ],
-        color=parse_color('#e08787'),
+        color=parse_color('#AB4642'),
         border_color=(0.1, 0.1, 0.1)
     )
 ]

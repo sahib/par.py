@@ -156,9 +156,9 @@ class Desktops(Text):
             elif idx in urgents:
                 color = (0.8, 0.4, 0.4)
             elif idx in empties:
-                color = (0.6, 0.7, 0.6)
+                color = (0.8, 0.8, 0.8)
             else:
-                color = (0.3, 0.4, 0.3)
+                color = (0.2, 0.3, 0.2)
             self._text_widgets.append(Text(markup=markup, color=color))
 
     def bounding_box(self):
@@ -415,7 +415,7 @@ class ElchBar(Gtk.Window):
 if __name__ == '__main__':
     import sys
     defaults = {
-        'bg_color': (0.23, 0.23, 0.23),
+        'bg_color': (0.1, 0.1, 0.1),
         'height': 20
     }
 
