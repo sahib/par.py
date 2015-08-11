@@ -63,7 +63,7 @@ class Widget:
 
 
 class Bar(Widget):
-    def __init__(self, w=100, h=10, percent=0.5, lw=2, defined=True, fg=(1, 0.5, 0), bg=(0.2, 0.1, 0.1)):
+    def __init__(self, w=100, h=10, percent=0.5, lw=2, defined=True, fg=(0.63, 0.41, 0.27), bg=(0.2, 0.1, 0.1)):
         self._w, self._h, self._percent, = w, h, percent
         self._lw, self._defined, self._fg, self._bg = lw, defined, fg, bg
 
@@ -158,7 +158,7 @@ class Desktops(Text):
             elif idx in empties:
                 color = (0.8, 0.8, 0.8)
             else:
-                color = (0.2, 0.3, 0.2)
+                color = (0.2, 0.3, 0.4)
             self._text_widgets.append(Text(markup=markup, color=color))
 
     def bounding_box(self):

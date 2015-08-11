@@ -102,7 +102,7 @@ class MPDSource():
         for line in (blob or '').splitlines():
             if ':' in line:
                 key, value = [s.strip() for s in line.split(':', maxsplit=1)]
-                result[key] = value
+                result[key.lower()] = value
         return result
 
     def _read_response(self):
@@ -136,12 +136,14 @@ class MPDSource():
         self._is_playing = unstopped = info['state'] in ['play', 'pause']
         if unstopped:
             markup = '<i> {title}<small> by </small>{artist}<small> on </small>{album} </i>'.format(
-                title=GLib.markup_escape_text(info.get('Title', 'n/a')),
-                artist=GLib.markup_escape_text(info.get('Artist', 'n/a')),
-                album=GLib.markup_escape_text(info.get('Album', 'n/a'))
+                title=GLib.markup_escape_text(info.get('title', 'n/a')),
+                artist=GLib.markup_escape_text(info.get('artist', 'n/a')),
+                album=GLib.markup_escape_text(info.get('album', 'n/a'))
             )
             self._last_elapsed = float(info.get('elapsed', 0))
-            self._last_tottime = float(info.get('Time', 0))
+
+            _, total_time = info.get('time', '0:1').split(':', 1)
+            self._last_tottime = float(total_time)
 
             if self._last_tottime:
                 percent = self._last_elapsed / self._last_tottime
